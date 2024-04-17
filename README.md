@@ -1,1 +1,1 @@
-open - input link - input amount and goooo
+open file exe - input link - input amount and goooo
